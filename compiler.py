@@ -14,6 +14,7 @@
 
 """
 
+from multiprocessing.dummy import Array
 from pprint import pprint
 from ast import Str
 import re
@@ -115,15 +116,83 @@ def parser(tokens):
             return node
         raise ValueError(type.type)
     ast = {
-        'type': 'program',
+        'type': 'Program',
         'body': []
     }
     while current < len(tokens):
         ast['body'].append(walk())
     return ast
 
+
+def traverser(ast, visitor):
+    def traverseArray(array: Array, parent):
+        for i in array:
+            traverseNode(i, parent)
+    def traverseNode(node, parent):
+        methods = visitor.get(node['type'], None)
+        if methods and methods['enter']:
+            methods['enter'](node, parent)
+        if node['type'] == 'Program':
+            traverseArray(node['body'], node)
+        elif node['type'] == 'CallExpression':
+            traverseArray(node['params'], node)
+        elif node['type'] == 'NumberLiteral' or node['type'] == 'StringLiteral':
+            pass
+        else:
+            raise ValueError(node.get('type'))
+        if methods and methods.get('exit', None):
+            methods['exit'](node, parent)
+    traverseNode(ast, None)
+
+
+def transformer(ast):
+    newAst = {
+        'type': 'Program',
+        'body': []
+    }
+    ast['_context'] = newAst['body']
+    def _callExpressionEnter(node, parent):
+        expression = {
+            'type': 'CallExpression',
+            'callee': {
+                'type': 'Identifier',
+                'name': node['name']
+            },
+            'arguments': []
+        }
+        node['_context'] = expression['arguments']
+        if parent['type'] != 'CallExpression':
+            expression = {
+                'type': 'ExpressionStatement',
+                'expression': expression
+            }
+        parent['_context'].append(expression)
+    traverser(ast, {
+        'NumberLiteral': {
+            'enter': lambda node, parent: {
+                parent['_context'].append({
+                    'type': 'NumberLiteral',
+                    'value': node['value']
+                })
+            }
+        },
+        'StringLiteral': {
+            'enter': lambda node, parent: {
+                parent['_context'].append({
+                    'type': 'StringLiteral',
+                    'value': node['value']
+                })
+            }
+        },
+        'CallExpression': {
+            'enter': _callExpressionEnter
+        }
+    })
+    return newAst
+
 if __name__ == '__main__':
     input_ = '(add 1 (sub 2 1))'
     tokens = tokenizer(input_)
     ast = parser(tokens)
-    pprint(ast)
+    newAst = transformer(ast)
+    pprint(newAst)
