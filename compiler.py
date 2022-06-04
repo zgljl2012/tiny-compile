@@ -80,6 +80,50 @@ def tokenizer(input: Str):
         raise ValueError('I dont know what this character is: ' + char)
     return tokens
 
+
+def parser(tokens):
+    current = 0
+    def walk():
+        nonlocal current # 嵌套闭包需进行此声明
+        token = tokens[current]
+        if token['type'] == 'number':
+            current += 1
+            return {
+                'type': 'NumberLiteral',
+                'value': token['value']
+            }
+        if token['type'] == 'string':
+            current += 1
+            return {
+                'type': 'StringLiteral',
+                'value': token['value']
+            }
+        if token['type'] == 'paren' and token['value'] == '(':
+            current += 1
+            token = tokens[current]
+            node = {
+                'type': 'CallExpression',
+                'name': token['value'],
+                'params': []
+            }
+            current += 1
+            token = tokens[current]
+            while token['type'] != 'paren' or token['type'] == 'paren' and token['value'] != ')':
+                node['params'].append(walk())
+                token = tokens[current]
+            current += 1
+            return node
+        raise ValueError(type.type)
+    ast = {
+        'type': 'program',
+        'body': []
+    }
+    while current < len(tokens):
+        ast['body'].append(walk())
+    return ast
+
 if __name__ == '__main__':
     input_ = '(add 1 (sub 2 1))'
-    pprint(tokenizer(input_))
+    tokens = tokenizer(input_)
+    ast = parser(tokens)
+    pprint(ast)
