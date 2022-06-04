@@ -190,9 +190,38 @@ def transformer(ast):
     })
     return newAst
 
-if __name__ == '__main__':
-    input_ = '(add 1 (sub 2 1))'
+
+def codeGenerator(node):
+    t = node['type']
+    if t == 'Program':
+        results = []
+        for i in node['body']:
+            results.append(codeGenerator(i))
+        return '\n'.join(results)
+    elif t == 'ExpressionStatement':
+        return codeGenerator(node['expression']) + ";"
+    elif t == 'CallExpression':
+        results = []
+        for i in node['arguments']:
+            results.append(codeGenerator(i))
+        args = ', ' .join(results)
+        return codeGenerator(node['callee']) + '(' + args + ')'
+    elif t == 'Identifier':
+        return node['name']
+    elif t == 'NumberLiteral':
+        return node['value']
+    elif t == 'StringLiteral':
+        return '"' + node['value'] + '"'
+    else:
+        raise ValueError(node['type'])
+
+def compile(input_):
     tokens = tokenizer(input_)
     ast = parser(tokens)
     newAst = transformer(ast)
-    pprint(newAst)
+    code = codeGenerator(newAst)
+    return code
+
+if __name__ == '__main__':
+    input_ = '(add 1 (sub 2 1))'
+    print(compile(input_))
