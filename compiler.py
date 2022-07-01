@@ -19,7 +19,9 @@ from pprint import pprint
 from ast import Str
 import re
 
-
+"""
+词法分析
+"""
 def tokenizer(input: Str):
     current = 0
     tokens = []
@@ -52,7 +54,7 @@ def tokenizer(input: Str):
                 current += 1
                 char = input[current]
 
-            tokens.append({ 'type': 'number', 'value': value });
+            tokens.append({ 'type': 'number', 'value': value })
             continue
 
         if char == '"':
@@ -65,7 +67,7 @@ def tokenizer(input: Str):
                 char = input[current]
             current += 1
             char = input[current]
-            tokens.append({ 'type': 'string', 'value': value });
+            tokens.append({ 'type': 'string', 'value': value })
             continue
 
         LETTERS = re.compile(r'[a-zA-Z]')
@@ -81,7 +83,9 @@ def tokenizer(input: Str):
         raise ValueError('I dont know what this character is: ' + char)
     return tokens
 
-
+"""
+语法分析
+"""
 def parser(tokens):
     current = 0
     def walk():
@@ -199,7 +203,7 @@ def codeGenerator(node):
             results.append(codeGenerator(i))
         return '\n'.join(results)
     elif t == 'ExpressionStatement':
-        return codeGenerator(node['expression']) + ";"
+        return codeGenerator(node['expression'])
     elif t == 'CallExpression':
         results = []
         for i in node['arguments']:
@@ -222,6 +226,21 @@ def compile(input_):
     code = codeGenerator(newAst)
     return code
 
+def runtime(compiled):
+    def add(a, b):
+        return a + b
+    def sub(a, b):
+        return a - b
+    return exec(f'print({compiled})')
+
+def shell():
+    print('='*20, 'This is a tiny compile which can compile List to python(only support `add` & `sub`)\ne.g. (add 1 (sub 2 1))', '='*20)
+    while True:
+        code = input('Code >')
+        compiled = compile(code)
+        print('Compiled:', compiled)
+        print('Result:')
+        runtime(compiled)
+
 if __name__ == '__main__':
-    input_ = '(add 1 (sub 2 1))'
-    print(compile(input_))
+    shell()
